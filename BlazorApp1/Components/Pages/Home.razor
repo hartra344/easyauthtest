@@ -196,6 +196,21 @@
     </div>
 </div>
 
+<div class="card mt-4">
+    <div class="card-header">
+        <h3>Agent Card</h3>
+    </div>
+    <div class="card-body">
+        <iframe 
+            src="@GetIframeUrl()" 
+            width="100%" 
+            height="600" 
+            style="border: 1px solid #ddd; border-radius: 4px;"
+            title="Agent Card">
+        </iframe>
+    </div>
+</div>
+
 @code {
     private EasyAuthInfo? authInfo;
     private DetailedAuthInfo? detailedAuthInfo;
@@ -220,5 +235,12 @@
         // Note: In a real application, you would use JavaScript interop to copy to clipboard
         // For now, this is a placeholder that shows the intent
         await Task.CompletedTask;
+    }
+
+    private string GetIframeUrl()
+    {
+        var agentJsonUrl = "/.well-known/agent.json";
+        var encodedUrl = Uri.EscapeDataString(agentJsonUrl);
+        return $"/iframe.html?agentCard={encodedUrl}";
     }
 }
