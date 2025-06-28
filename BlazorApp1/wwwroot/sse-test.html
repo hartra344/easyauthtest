@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SSE Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 40px auto;
+            padding: 20px;
+        }
+        .event {
+            background-color: #f4f4f4;
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .event-id {
+            font-weight: bold;
+            color: #0066cc;
+        }
+        .event-data {
+            margin-top: 5px;
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-right: 10px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+        .status {
+            margin: 20px 0;
+            padding: 10px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .status.connected {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .status.disconnected {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .status.connecting {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+    </style>
+</head>
+<body>
+    <h1>Server-Sent Events Test</h1>
+    
+    <div>
+        <button id="connectBtn" onclick="connect()">Connect to SSE</button>
+        <button id="disconnectBtn" onclick="disconnect()" disabled>Disconnect</button>
+        <button onclick="clearEvents()">Clear Events</button>
+    </div>
+    
+    <div id="status" class="status disconnected">Disconnected</div>
+    
+    <h2>Events:</h2>
+    <div id="events"></div>
+
+    <script>
+        let abortController = null;
+        const eventsDiv = document.getElementById('events');
+        const statusDiv = document.getElementById('status');
+        const connectBtn = document.getElementById('connectBtn');
+        const disconnectBtn = document.getElementById('disconnectBtn');
+
+        function updateStatus(status, message) {
+            statusDiv.className = `status ${status}`;
+            statusDiv.textContent = message;
+        }
+
+        function addEvent(id, data) {
+            const eventDiv = document.createElement('div');
+            eventDiv.className = 'event';
+            
+            const timestamp = new Date().toLocaleTimeString();
+            
+            eventDiv.innerHTML = `
+                <div>
+                    <span class="event-id">Event ID: ${id}</span>
+                    <span style="float: right; color: #666;">${timestamp}</span>
+                </div>
+                <div class="event-data">${JSON.stringify(JSON.parse(data), null, 2)}</div>
+            `;
+            
+            eventsDiv.insertBefore(eventDiv, eventsDiv.firstChild);
+        }
+
+        async function connect() {
+            updateStatus('connecting', 'Connecting...');
+            connectBtn.disabled = true;
+            disconnectBtn.disabled = false;
+            
+            abortController = new AbortController();
+            
+            try {
+                const response = await fetch('/api/sse/stream', {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'text/event-stream',
+                    },
+                    signal: abortController.signal
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                updateStatus('connected', 'Connected to SSE');
+                console.log('SSE connection opened');
+                
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+                let currentId = null;
+                
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop() || '';
+                    
+                    for (const line of lines) {
+                        if (line.startsWith('id: ')) {
+                            currentId = line.substring(4).trim();
+                        } else if (line.startsWith('data: ')) {
+                            const data = line.substring(6);
+                            addEvent(currentId || new Date().getTime(), data);
+                            currentId = null; // Reset after use
+                        }
+                    }
+                }
+                
+                updateStatus('disconnected', 'Stream ended');
+            } catch (error) {
+                if (error.name === 'AbortError') {
+                    console.log('Fetch aborted');
+                    updateStatus('disconnected', 'Disconnected by user');
+                } else {
+                    console.error('SSE error:', error);
+                    updateStatus('disconnected', 'Connection error: ' + error.message);
+                }
+            } finally {
+                connectBtn.disabled = false;
+                disconnectBtn.disabled = true;
+                abortController = null;
+            }
+        }
+
+        function disconnect() {
+            if (abortController) {
+                abortController.abort();
+                abortController = null;
+            }
+        }
+
+        function clearEvents() {
+            eventsDiv.innerHTML = '';
+        }
+
+        // Auto-connect on page load
+        window.addEventListener('load', function() {
+            // Uncomment to auto-connect
+            // connect();
+        });
+    </script>
+</body>
+</html>
