@@ -73,6 +73,41 @@ public class EasyAuthService
 
         return null;
     }
+
+    /// <summary>
+    /// Gets the access token for use in API calls.
+    /// This token should be used in the Authorization header as: Bearer {token}
+    /// </summary>
+    public async Task<string?> GetAccessTokenAsync()
+    {
+        // First try to get from headers (if token store is enabled in App Service)
+        var authInfo = GetEasyAuthInfo();
+        if (!string.IsNullOrEmpty(authInfo.AadAccessToken))
+        {
+            return authInfo.AadAccessToken;
+        }
+
+        // If not in headers, get from /.auth/me endpoint
+        var detailedInfo = await GetDetailedAuthInfoAsync();
+        return detailedInfo?.AccessToken;
+    }
+
+    /// <summary>
+    /// Gets the ID token which contains user claims and identity information.
+    /// </summary>
+    public async Task<string?> GetIdTokenAsync()
+    {
+        // First try to get from headers (if token store is enabled in App Service)
+        var authInfo = GetEasyAuthInfo();
+        if (!string.IsNullOrEmpty(authInfo.AadIdToken))
+        {
+            return authInfo.AadIdToken;
+        }
+
+        // If not in headers, get from /.auth/me endpoint
+        var detailedInfo = await GetDetailedAuthInfoAsync();
+        return detailedInfo?.IdToken;
+    }
 }
 
 public class EasyAuthInfo

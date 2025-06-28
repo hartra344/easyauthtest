@@ -1,0 +1,145 @@
+@page "/api-example"
+@using BlazorApp1.Services
+@using System.Net.Http.Headers
+@inject EasyAuthService EasyAuthService
+@inject HttpClient HttpClient
+
+<PageTitle>API Call Example</PageTitle>
+
+<h1>API Call Example with Easy Auth Tokens</h1>
+
+<div class="card mt-4">
+    <div class="card-header">
+        <h3>How to Use Tokens in API Calls</h3>
+    </div>
+    <div class="card-body">
+        @if (!string.IsNullOrEmpty(accessToken))
+        {
+            <div class="alert alert-success">
+                <strong>Token Retrieved!</strong> You can use this token for API calls.
+            </div>
+
+            <h4>Example Usage:</h4>
+            
+            <h5>1. In C# HttpClient:</h5>
+            <pre><code>// Get the token
+var token = await EasyAuthService.GetAccessTokenAsync();
+
+// Add to HttpClient
+httpClient.DefaultRequestHeaders.Authorization = 
+    new AuthenticationHeaderValue("Bearer", token);
+
+// Make API call
+var response = await httpClient.GetAsync("https://graph.microsoft.com/v1.0/me");</code></pre>
+
+            <h5>2. In JavaScript/Fetch:</h5>
+            <pre><code>fetch('https://graph.microsoft.com/v1.0/me', {
+    headers: {
+        'Authorization': 'Bearer ' + token
+    }
+})
+.then(response => response.json())
+.then(data => console.log(data));</code></pre>
+
+            <h5>3. Current Token (first 50 chars):</h5>
+            <div class="mb-3">
+                <code>@accessToken.Substring(0, Math.Min(50, accessToken.Length))...</code>
+            </div>
+
+            <button class="btn btn-primary" @onclick="TestApiCall">Test Microsoft Graph API Call</button>
+
+            @if (!string.IsNullOrEmpty(apiResponse))
+            {
+                <div class="mt-3">
+                    <h5>API Response:</h5>
+                    <pre class="bg-light p-3">@apiResponse</pre>
+                </div>
+            }
+
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="alert alert-danger mt-3">
+                    <strong>Error:</strong> @errorMessage
+                </div>
+            }
+        }
+        else
+        {
+            <div class="alert alert-warning">
+                <strong>No Token Available</strong> - Please ensure you're authenticated and have clicked "Refresh Detailed Info" on the home page.
+            </div>
+            <a href="/" class="btn btn-primary">Go to Home Page</a>
+        }
+    </div>
+</div>
+
+<div class="card mt-4">
+    <div class="card-header">
+        <h3>Common Token Issues</h3>
+    </div>
+    <div class="card-body">
+        <ul>
+            <li><strong>No tokens showing?</strong> Enable "Token store" in your App Service Authentication settings</li>
+            <li><strong>Token expired?</strong> Tokens typically expire after 1 hour. Re-authenticate to get new tokens</li>
+            <li><strong>API returns 401?</strong> Ensure the token has the right scopes for your API</li>
+            <li><strong>Different token types:</strong>
+                <ul>
+                    <li><em>Access Token</em> - Use this for API calls</li>
+                    <li><em>ID Token</em> - Contains user information, not for API calls</li>
+                    <li><em>Refresh Token</em> - Used to get new tokens (handled by App Service)</li>
+                </ul>
+            </li>
+        </ul>
+    </div>
+</div>
+
+@code {
+    private string? accessToken;
+    private string? apiResponse;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        accessToken = await EasyAuthService.GetAccessTokenAsync();
+    }
+
+    private async Task TestApiCall()
+    {
+        try
+        {
+            errorMessage = null;
+            apiResponse = null;
+
+            if (string.IsNullOrEmpty(accessToken))
+            {
+                errorMessage = "No access token available";
+                return;
+            }
+
+            // Configure HttpClient with the token
+            HttpClient.DefaultRequestHeaders.Authorization = 
+                new AuthenticationHeaderValue("Bearer", accessToken);
+
+            // Try to call Microsoft Graph API
+            var response = await HttpClient.GetAsync("https://graph.microsoft.com/v1.0/me");
+            
+            if (response.IsSuccessStatusCode)
+            {
+                apiResponse = await response.Content.ReadAsStringAsync();
+            }
+            else
+            {
+                errorMessage = $"API call failed: {response.StatusCode} - {response.ReasonPhrase}";
+                var content = await response.Content.ReadAsStringAsync();
+                if (!string.IsNullOrEmpty(content))
+                {
+                    errorMessage += $"\n\nResponse: {content}";
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Exception: {ex.Message}";
+        }
+    }
+}

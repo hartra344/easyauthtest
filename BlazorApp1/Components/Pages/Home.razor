@@ -91,6 +91,64 @@
                     </tr>
                 </table>
 
+                @if (!string.IsNullOrEmpty(detailedAuthInfo.AccessToken) || !string.IsNullOrEmpty(detailedAuthInfo.IdToken))
+                {
+                    <h4 class="mt-3">Available Tokens for API Calls</h4>
+                    <div class="alert alert-info">
+                        <strong>Note:</strong> Use these tokens in your API calls by adding them to the Authorization header.
+                    </div>
+                    
+                    <div class="accordion" id="detailedTokenAccordion">
+                        @if (!string.IsNullOrEmpty(detailedAuthInfo.AccessToken))
+                        {
+                            <div class="accordion-item">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#detailAccessToken">
+                                        Access Token (Use this for API calls)
+                                    </button>
+                                </h2>
+                                <div id="detailAccessToken" class="accordion-collapse collapse" data-bs-parent="#detailedTokenAccordion">
+                                    <div class="accordion-body">
+                                        <div class="mb-2">
+                                            <strong>Usage:</strong> Add to Authorization header as: <code>Bearer @(detailedAuthInfo.AccessToken?.Length > 20 ? detailedAuthInfo.AccessToken.Substring(0, 20) + "..." : detailedAuthInfo.AccessToken)</code>
+                                        </div>
+                                        <div class="input-group">
+                                            <input type="text" class="form-control" value="@detailedAuthInfo.AccessToken" readonly id="accessTokenInput" />
+                                            <button class="btn btn-outline-secondary" type="button" @onclick='() => CopyToClipboard("accessTokenInput")'>
+                                                Copy
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                        
+                        @if (!string.IsNullOrEmpty(detailedAuthInfo.IdToken))
+                        {
+                            <div class="accordion-item">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#detailIdToken">
+                                        ID Token (Contains user info)
+                                    </button>
+                                </h2>
+                                <div id="detailIdToken" class="accordion-collapse collapse" data-bs-parent="#detailedTokenAccordion">
+                                    <div class="accordion-body">
+                                        <div class="mb-2">
+                                            <strong>Usage:</strong> Contains user claims and identity information
+                                        </div>
+                                        <div class="input-group">
+                                            <input type="text" class="form-control" value="@detailedAuthInfo.IdToken" readonly id="idTokenInput" />
+                                            <button class="btn btn-outline-secondary" type="button" @onclick='() => CopyToClipboard("idTokenInput")'>
+                                                Copy
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+
                 @if (detailedAuthInfo.UserClaims?.Any() == true)
                 {
                     <h5>User Claims</h5>
@@ -117,6 +175,10 @@
             <button class="btn btn-primary mt-3" @onclick="RefreshDetailedInfo">
                 Refresh Detailed Info
             </button>
+            
+            <a href="/api-example" class="btn btn-secondary mt-3 ms-2">
+                View API Example
+            </a>
         }
         else
         {
@@ -151,5 +213,12 @@
     private async Task RefreshDetailedInfo()
     {
         detailedAuthInfo = await EasyAuthService.GetDetailedAuthInfoAsync();
+    }
+
+    private async Task CopyToClipboard(string elementId)
+    {
+        // Note: In a real application, you would use JavaScript interop to copy to clipboard
+        // For now, this is a placeholder that shows the intent
+        await Task.CompletedTask;
     }
 }
