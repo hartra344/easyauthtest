@@ -239,7 +239,7 @@
 
     private string GetIframeUrl()
     {
-        var agentJsonUrl = "/agent.json";
+        var agentJsonUrl = "/api/agent.json";
         var encodedUrl = Uri.EscapeDataString(agentJsonUrl);
         return $"/iframe.html?agentCard={encodedUrl}";
     }
