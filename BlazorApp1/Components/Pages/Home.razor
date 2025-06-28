@@ -1,0 +1,155 @@
+﻿@page "/"
+@using BlazorApp1.Services
+@inject EasyAuthService EasyAuthService
+
+<PageTitle>Home</PageTitle>
+
+<h1>Azure Easy Auth Sample</h1>
+
+<p>Welcome to your Easy Auth enabled Blazor app!</p>
+
+<div class="card mt-4">
+    <div class="card-header">
+        <h3>Authentication Status</h3>
+    </div>
+    <div class="card-body">
+        @if (authInfo?.IsAuthenticated == true)
+        {
+            <div class="alert alert-success">
+                <strong>Authenticated!</strong> You are logged in.
+            </div>
+            
+            <h4>Basic Auth Info (from Headers)</h4>
+            <table class="table table-sm">
+                <tr>
+                    <td><strong>Principal ID:</strong></td>
+                    <td>@(authInfo.PrincipalId ?? "Not available")</td>
+                </tr>
+                <tr>
+                    <td><strong>Principal Name:</strong></td>
+                    <td>@(authInfo.PrincipalName ?? "Not available")</td>
+                </tr>
+                <tr>
+                    <td><strong>Identity Provider:</strong></td>
+                    <td>@(authInfo.IdentityProvider ?? "Not available")</td>
+                </tr>
+            </table>
+
+            @if (!string.IsNullOrEmpty(authInfo.AadIdToken) || !string.IsNullOrEmpty(authInfo.AadAccessToken))
+            {
+                <h4 class="mt-3">Tokens (from Headers)</h4>
+                <div class="accordion" id="tokenAccordion">
+                    @if (!string.IsNullOrEmpty(authInfo.AadIdToken))
+                    {
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#idToken">
+                                    ID Token
+                                </button>
+                            </h2>
+                            <div id="idToken" class="accordion-collapse collapse" data-bs-parent="#tokenAccordion">
+                                <div class="accordion-body">
+                                    <code style="word-break: break-all;">@authInfo.AadIdToken</code>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                    
+                    @if (!string.IsNullOrEmpty(authInfo.AadAccessToken))
+                    {
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#accessToken">
+                                    Access Token
+                                </button>
+                            </h2>
+                            <div id="accessToken" class="accordion-collapse collapse" data-bs-parent="#tokenAccordion">
+                                <div class="accordion-body">
+                                    <code style="word-break: break-all;">@authInfo.AadAccessToken</code>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+
+            @if (detailedAuthInfo != null)
+            {
+                <h4 class="mt-3">Detailed Auth Info (from /.auth/me)</h4>
+                <table class="table table-sm">
+                    <tr>
+                        <td><strong>User ID:</strong></td>
+                        <td>@(detailedAuthInfo.UserId ?? "Not available")</td>
+                    </tr>
+                    <tr>
+                        <td><strong>User Name:</strong></td>
+                        <td>@(detailedAuthInfo.UserName ?? "Not available")</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Expires On:</strong></td>
+                        <td>@(detailedAuthInfo.ExpiresOn?.ToString("yyyy-MM-dd HH:mm:ss") ?? "Not available")</td>
+                    </tr>
+                </table>
+
+                @if (detailedAuthInfo.UserClaims?.Any() == true)
+                {
+                    <h5>User Claims</h5>
+                    <table class="table table-sm table-striped">
+                        <thead>
+                            <tr>
+                                <th>Type</th>
+                                <th>Value</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var claim in detailedAuthInfo.UserClaims)
+                            {
+                                <tr>
+                                    <td>@claim.Type</td>
+                                    <td>@claim.Value</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+            }
+
+            <button class="btn btn-primary mt-3" @onclick="RefreshDetailedInfo">
+                Refresh Detailed Info
+            </button>
+        }
+        else
+        {
+            <div class="alert alert-warning">
+                <strong>Not Authenticated</strong> - Please log in through Azure App Service authentication.
+            </div>
+            <p>To authenticate:</p>
+            <ol>
+                <li>Deploy this app to Azure App Service</li>
+                <li>Enable Authentication/Authorization in the App Service</li>
+                <li>Configure an identity provider (e.g., Azure AD, Google, Facebook)</li>
+                <li>Access the app through the App Service URL</li>
+            </ol>
+        }
+    </div>
+</div>
+
+@code {
+    private EasyAuthInfo? authInfo;
+    private DetailedAuthInfo? detailedAuthInfo;
+
+    protected override async Task OnInitializedAsync()
+    {
+        authInfo = EasyAuthService.GetEasyAuthInfo();
+        
+        if (authInfo?.IsAuthenticated == true)
+        {
+            detailedAuthInfo = await EasyAuthService.GetDetailedAuthInfoAsync();
+        }
+    }
+
+    private async Task RefreshDetailedInfo()
+    {
+        detailedAuthInfo = await EasyAuthService.GetDetailedAuthInfoAsync();
+    }
+}
